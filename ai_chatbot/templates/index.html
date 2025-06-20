@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .chat-container {
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-header {
+            background: linear-gradient(to right, #4a90e2, #50c9c3);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .clear-btn {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .clear-btn:hover svg {
+            fill: #ff4d4d;
+        }
+        .chat-box {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .user-message {
+            align-items: flex-end;
+        }
+        .bot-message {
+            align-items: flex-start;
+        }
+        .typing-indicator {
+            align-items: flex-start;
+        }
+        .typing-indicator .message-text {
+            background: #e0e0e0;
+            color: #333;
+            display: flex;
+            align-items: center;
+            font-style: italic;
+        }
+        .message-text {
+            max-width: 70%;
+            padding: 10px;
+            border-radius: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        .user-message .message-text {
+            background: #4a90e2;
+            color: white;
+        }
+        .bot-message .message-text {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .input-container {
+            display: flex;
+            border-top: 1px solid #ddd;
+            padding: 10px;
+            background: white;
+        }
+        #user-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+        #send-btn {
+            background: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-left: 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #send-btn:hover {
+            background: #357abd;
+        }
+        .typing-dots {
+            display: inline-flex;
+            margin-left: 5px;
+        }
+        .typing-dots span {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #333;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 0.6s infinite alternate;
+        }
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes bounce {
+            to {
+                transform: translateY(-4px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <span>AI Chatbot</span>
+            <button class="clear-btn" id="clear-btn" title="Clear Chat">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff">
+                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zm2.46-7.12l1.41-1.41L12 12.59l2.12-2.12 1.41 1.41L13.41 14l2.12 2.12-1.41 1.41L12 15.41l-2.12 2.12-1.41-1.41L10.59 14l-2.13-2.12zM15.5 4l-1-1h-5l-1 1H5v2h14V4h-3.5z"/>
+                </svg>
+            </button>
+        </div>
+        <div class="chat-box" id="chat-box"></div>
+        <div class="input-container">
+            <input type="text" id="user-input" placeholder="Type a message..." />
+            <button id="send-btn">Send</button>
+        </div>
+    </div>
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const clearBtn = document.getElementById('clear-btn');
+
+        // Load chat history from localStorage
+        function loadChatHistory() {
+            const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            history.forEach(msg => addMessage(msg.text, msg.isUser, false));
+        }
+
+        // Save message to localStorage
+        function saveMessage(text, isUser) {
+            const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+            history.push({ text, isUser });
+            localStorage.setItem('chatHistory', JSON.stringify(history));
+        }
+
+        // Add message to chat box
+        function addMessage(text, isUser, save = true) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            const messageText = document.createElement('div');
+            messageText.className = 'message-text';
+            messageText.textContent = text;
+            messageDiv.appendChild(messageText);
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            if (save) saveMessage(text, isUser);
+        }
+
+        // Show typing indicator with animation
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message typing-indicator';
+            typingDiv.id = 'typing-indicator';
+            const typingText = document.createElement('div');
+            typingText.className = 'message-text';
+            typingText.innerHTML = '<span class="typing-dots"><span></span><span></span><span></span></span>';
+            typingDiv.appendChild(typingText);
+            chatBox.appendChild(typingDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Remove typing indicator
+        function removeTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) typingIndicator.remove();
+        }
+
+        // Fetch response from Flask backend
+        async function getBotResponse(userText) {
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: userText })
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Unknown error');
+                }
+                return data.response;
+            } catch (error) {
+                console.error('Error fetching bot response:', error);
+                return 'Sorry, I couldn’t connect to the server. Please try again later.';
+            }
+        }
+
+        // Handle sending message
+        async function handleSend() {
+            const userText = userInput.value.trim();
+            if (!userText) return;
+
+            addMessage(userText, true);
+            userInput.value = '';
+
+            showTypingIndicator();
+            const botResponse = await getBotResponse(userText);
+            removeTypingIndicator();
+            addMessage(botResponse, false);
+        }
+
+        // Clear chat history
+        function clearChat() {
+            localStorage.removeItem('chatHistory');
+            chatBox.innerHTML = '';
+        }
+
+        // Event listeners
+        sendBtn.addEventListener('click', handleSend);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleSend();
+        });
+        clearBtn.addEventListener('click', clearChat);
+
+        // Load chat history on page load
+        loadChatHistory();
+    </script>
+</body>
+</html>
